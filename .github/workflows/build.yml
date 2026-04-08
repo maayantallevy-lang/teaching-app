@@ -1,0 +1,302 @@
+name: Build TeachIn App
+on: 
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repo (if exists)
+        uses: actions/checkout@v4
+        continue-on-error: true
+
+      - name: Setup Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Initialize Project
+        run: |
+          mkdir -p teachin-app
+          cd teachin-app
+          npm init -y
+          npm install @capacitor/core @capacitor/cli @capacitor/android @capacitor-community/admob firebase
+
+      - name: Generate Capacitor Config
+        run: |
+          cd teachin-app
+          cat << 'EOF_CAP' > capacitor.config.json
+          {
+            "appId": "com.teachin.app",
+            "appName": "TeachIn",
+            "webDir": "www",
+            "bundledWebRuntime": false
+          }
+          EOF_CAP
+
+      - name: Generate Web App (index.html)
+        run: |
+          cd teachin-app
+          mkdir -p www
+          cat << 'EOF_HTML' > www/index.html
+          <!DOCTYPE html>
+          <html lang="he" dir="rtl">
+          <head>
+              <meta charset="UTF-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+              <title>TeachIn</title>
+              <script src="https://cdn.tailwindcss.com"></script>
+              <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+              <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+              <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+              <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+              <style>
+                  body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0f172a; color: #f8fafc; height: 100vh; margin: 0; }
+                  .btn-primary { background: linear-gradient(135deg, #7c3aed 0%, #4c1d95 100%); color: white; padding: 12px 24px; border-radius: 99px; font-weight: bold; border: none; }
+              </style>
+          </head>
+          <body>
+          <div id="root"></div>
+
+          <!-- Firebase SDKs -->
+          <script type="module">
+            import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
+            import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
+            import { getFirestore, doc, setDoc, getDoc, collection, getDocs, updateDoc } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
+
+            const firebaseConfig = {
+              apiKey: "AIzaSyBn6RRUVNqcAd-XxvM6J9Qcv7Y-sTpNYpM",
+              authDomain: "teachin-app.firebaseapp.com",
+              projectId: "teachin-app",
+              storageBucket: "teachin-app.firebasestorage.app",
+              messagingSenderId: "1065560600184",
+              appId: "1:1065560600184:web:6619477708c702ac93478d"
+            };
+
+            const app = initializeApp(firebaseConfig);
+            window.auth = getAuth(app);
+            window.db = getFirestore(app);
+            window.fbSignIn = signInWithEmailAndPassword;
+            window.fbCreate = createUserWithEmailAndPassword;
+            window.fbSignOut = signOut;
+            window.doc = doc;
+            window.setDoc = setDoc;
+            window.getDoc = getDoc;
+            window.updateDoc = updateDoc;
+            window.collection = collection;
+            window.getDocs = getDocs;
+            
+            // Dispatch event when Firebase is ready
+            window.dispatchEvent(new Event('firebase-ready'));
+          </script>
+
+          <!-- Capacitor AdMob integration bridge -->
+          <script>
+             window.showInterstitialAd = async () => {
+                if (window.Capacitor && window.Capacitor.Plugins.AdMob) {
+                   await window.Capacitor.Plugins.AdMob.prepareInterstitial({ adId: 'ca-app-pub-3413269899893467/9045710640' });
+                   await window.Capacitor.Plugins.AdMob.showInterstitial();
+                } else {
+                   console.log("Mock Interstitial Ad Shown");
+                }
+             };
+             window.showBannerAd = async () => {
+                if (window.Capacitor && window.Capacitor.Plugins.AdMob) {
+                   await window.Capacitor.Plugins.AdMob.showBanner({
+                       adId: 'ca-app-pub-3413269899893467/1651949125',
+                       position: 'BOTTOM_CENTER',
+                       margin: 0
+                   });
+                }
+             };
+          </script>
+
+          <script type="text/babel">
+              const { useState, useEffect } = React;
+
+              const App = () => {
+                  const [user, setUser] = useState(null);
+                  const [userData, setUserData] = useState(null);
+                  const [loading, setLoading] = useState(true);
+                  const [email, setEmail] = useState('');
+                  const [password, setPassword] = useState('');
+
+                  useEffect(() => {
+                      const init = () => {
+                          if (window.auth) {
+                              window.auth.onAuthStateChanged(async (u) => {
+                                  if (u) {
+                                      setUser(u);
+                                      const dSnap = await window.getDoc(window.doc(window.db, "users", u.uid));
+                                      if (dSnap.exists()) {
+                                          setUserData(dSnap.data());
+                                      } else {
+                                          const initialData = { role: 'teacher', tier: 'free', trialEnd: Date.now() + 30*24*60*60*1000 };
+                                          await window.setDoc(window.doc(window.db, "users", u.uid), initialData);
+                                          setUserData(initialData);
+                                      }
+                                      window.showBannerAd();
+                                  } else {
+                                      setUser(null);
+                                      setUserData(null);
+                                  }
+                                  setLoading(false);
+                              });
+                          }
+                      };
+                      if (window.auth) init();
+                      else window.addEventListener('firebase-ready', init);
+                  }, []);
+
+                  const handleLogin = async () => {
+                      try {
+                          await window.fbSignIn(window.auth, email, password);
+                      } catch (e) {
+                          if (e.code === 'auth/user-not-found' || e.code === 'auth/invalid-credential') {
+                              try {
+                                  await window.fbCreate(window.auth, email, password);
+                              } catch(err) {
+                                  Swal.fire('Error', err.message, 'error');
+                              }
+                          } else {
+                              Swal.fire('Error', e.message, 'error');
+                          }
+                      }
+                  };
+
+                  const handleUpgrade = async (tier) => {
+                      await window.showInterstitialAd();
+                      // Redirect to Stripe or mock payment success
+                      Swal.fire('Processing Payment...', 'Simulating payment gateway transfer...', 'info');
+                      setTimeout(async () => {
+                          await window.updateDoc(window.doc(window.db, "users", user.uid), { tier: tier });
+                          setUserData({...userData, tier: tier});
+                          Swal.fire('Success', 'Successfully upgraded to ' + tier, 'success');
+                      }, 2000);
+                  };
+
+                  if (loading) return <div className="flex h-screen items-center justify-center text-white">Loading...</div>;
+
+                  if (!user) {
+                      return (
+                          <div className="flex flex-col h-screen items-center justify-center p-8 text-center bg-slate-900">
+                              <h1 className="text-4xl font-black mb-8 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-indigo-500">TeachIn</h1>
+                              <input className="w-full max-w-sm p-4 mb-4 rounded-xl text-black" placeholder="Email" value={email} onChange={e=>setEmail(e.target.value)} />
+                              <input className="w-full max-w-sm p-4 mb-8 rounded-xl text-black" type="password" placeholder="Password" value={password} onChange={e=>setPassword(e.target.value)} />
+                              <button className="btn-primary w-full max-w-sm" onClick={handleLogin}>Login / Register</button>
+                          </div>
+                      );
+                  }
+
+                  return (
+                      <div className="flex flex-col h-screen p-6 bg-slate-900 text-white overflow-y-auto pb-24">
+                          <header className="flex justify-between items-center mb-8">
+                              <h1 className="text-2xl font-black">Dashboard</h1>
+                              <button className="text-sm bg-white/10 px-4 py-2 rounded-full" onClick={() => window.fbSignOut(window.auth)}>Logout</button>
+                          </header>
+
+                          <section className="bg-slate-800 p-6 rounded-2xl mb-6">
+                              <h2 className="text-gray-400 text-sm font-bold uppercase tracking-wider mb-2">Current Tier</h2>
+                              <div className="text-2xl font-black text-white">{userData?.tier.toUpperCase()}</div>
+                          </section>
+
+                          <h3 className="font-bold mb-4">Subscription Plans</h3>
+                          <div className="grid gap-4">
+                              <div className="bg-slate-800 border border-slate-700 p-6 rounded-2xl flex flex-col items-center">
+                                  <div className="text-xl font-bold mb-2">Basic Tier</div>
+                                  <div className="text-gray-400 text-sm mb-4 text-center">Manage your students. No public profile.</div>
+                                  <div className="text-3xl font-black mb-6">$25<span className="text-sm text-gray-500">/mo</span></div>
+                                  <button onClick={() => handleUpgrade('basic')} className="w-full py-3 rounded-full font-bold bg-white/10 hover:bg-white/20 transition">Select Basic</button>
+                              </div>
+                              <div className="bg-gradient-to-br from-prime-600 to-indigo-800 p-6 rounded-2xl flex flex-col items-center shadow-2xl relative overflow-hidden">
+                                  <div className="absolute top-0 right-0 bg-yellow-400 text-black text-[10px] font-black px-3 py-1 rounded-bl-lg">POPULAR</div>
+                                  <div className="text-xl font-bold mb-2">Premium Tier</div>
+                                  <div className="text-indigo-200 text-sm mb-4 text-center">Public profile on marketplace + all basic features.</div>
+                                  <div className="text-3xl font-black mb-6 text-white">$30<span className="text-sm text-indigo-300">/mo</span></div>
+                                  <button onClick={() => handleUpgrade('premium')} className="w-full py-3 rounded-full font-black bg-white text-indigo-900 hover:scale-105 transition shadow-lg">Select Premium</button>
+                              </div>
+                          </div>
+                      </div>
+                  );
+              };
+
+              const root = ReactDOM.createRoot(document.getElementById('root'));
+              root.render(<App />);
+          </script>
+          </body>
+          </html>
+          EOF_HTML
+
+      - name: Build Capacitor App
+        run: |
+          cd teachin-app
+          npx cap add android
+          npx cap sync
+          npx cap copy
+
+      - name: Inject AdMob App ID
+        run: |
+          cd teachin-app
+          sed -i '/<application/a \        <meta-data android:name="com.google.android.gms.ads.APPLICATION_ID" android:value="ca-app-pub-3413269899893467~1622157401"/>' android/app/src/main/AndroidManifest.xml
+
+      - name: Inject Permissions
+        run: |
+          cd teachin-app
+          sed -i '/<manifest/a \    <uses-permission android:name="android.permission.INTERNET" />\n    <uses-permission android:name="com.google.android.gms.permission.AD_ID" />' android/app/src/main/AndroidManifest.xml
+
+      - name: Generate Testing Keystore
+        run: |
+          cd teachin-app/android
+          keytool -genkey -v -keystore release.keystore -alias releasealias -keyalg RSA -keysize 2048 -validity 10000 -storepass password123 -keypass password123 -dname "CN=TeachIn, OU=Dev, O=TeachIn, L=TelAviv, S=Israel, C=IL"
+          
+          # Inject Signing Config into build.gradle
+          cat << 'EOF_GRADLE' >> app/build.gradle
+          
+          android {
+              signingConfigs {
+                  release {
+                      storeFile file("../release.keystore")
+                      storePassword "password123"
+                      keyAlias "releasealias"
+                      keyPassword "password123"
+                  }
+              }
+              buildTypes {
+                  release {
+                      signingConfig signingConfigs.release
+                  }
+              }
+          }
+          EOF_GRADLE
+
+      - name: Install ImageMagick
+        run: sudo apt-get install -y imagemagick
+
+      - name: Create Logo
+        run: |
+          convert -size 512x512 gradient:#7c3aed-#4c1d95 -gravity center -pointsize 100 -fill white -annotate 0 "TeachIn" logo.png
+          mkdir -p teachin-app/android/app/src/main/res/mipmap-mdpi teachin-app/android/app/src/main/res/mipmap-hdpi teachin-app/android/app/src/main/res/mipmap-xhdpi teachin-app/android/app/src/main/res/mipmap-xxhdpi teachin-app/android/app/src/main/res/mipmap-xxxhdpi
+          convert logo.png -resize 48x48 teachin-app/android/app/src/main/res/mipmap-mdpi/ic_launcher.png
+          convert logo.png -resize 72x72 teachin-app/android/app/src/main/res/mipmap-hdpi/ic_launcher.png
+          convert logo.png -resize 96x96 teachin-app/android/app/src/main/res/mipmap-xhdpi/ic_launcher.png
+          convert logo.png -resize 144x144 teachin-app/android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png
+          convert logo.png -resize 192x192 teachin-app/android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
+
+      - name: Build Android AAB
+        run: |
+          cd teachin-app/android
+          ./gradlew bundleRelease
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release
+          path: teachin-app/android/app/build/outputs/bundle/release/app-release.aab
