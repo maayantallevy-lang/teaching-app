@@ -1,4 +1,4 @@
-name: Build TeachIng App
+name: Build Private Teacher Finder
 on: 
   push:
     branches: [ main, master ]
@@ -25,18 +25,18 @@ jobs:
 
       - name: Initialize Project
         run: |
-          mkdir -p teaching-app
-          cd teaching-app
+          mkdir -p private-teacher-finder-app
+          cd private-teacher-finder-app
           npm init -y
           npm install @capacitor/core @capacitor/cli @capacitor/android @capacitor-community/admob firebase
 
       - name: Generate Capacitor Config
         run: |
-          cd teaching-app
+          cd private-teacher-finder-app
           cat << 'EOF_CAP' > capacitor.config.json
           {
             "appId": "com.teachin.app",
-            "appName": "TeachIng",
+            "appName": "Private Teacher Finder",
             "webDir": "www",
             "bundledWebRuntime": false
           }
@@ -44,7 +44,7 @@ jobs:
 
       - name: Generate Web App (index.html)
         run: |
-          cd teaching-app
+          cd private-teacher-finder-app
           mkdir -p www
           cat << 'EOF_HTML' > www/index.html
           <!DOCTYPE html>
@@ -52,7 +52,7 @@ jobs:
           <head>
               <meta charset="UTF-8">
               <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-              <title>TeachIng</title>
+              <title>Private Teacher Finder</title>
               <script src="https://cdn.tailwindcss.com"></script>
               <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
               <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -188,7 +188,7 @@ jobs:
                   if (!user) {
                       return (
                           <div className="flex flex-col h-screen items-center justify-center p-8 text-center bg-slate-900">
-                              <h1 className="text-4xl font-black mb-8 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-indigo-500">TeachIng</h1>
+                              <h1 className="text-4xl font-black mb-8 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-indigo-500">Private Teacher Finder</h1>
                               <input className="w-full max-w-sm p-4 mb-4 rounded-xl text-black" placeholder="Email" value={email} onChange={e=>setEmail(e.target.value)} />
                               <input className="w-full max-w-sm p-4 mb-8 rounded-xl text-black" type="password" placeholder="Password" value={password} onChange={e=>setPassword(e.target.value)} />
                               <button className="btn-primary w-full max-w-sm" onClick={handleLogin}>Login / Register</button>
@@ -237,14 +237,14 @@ jobs:
 
       - name: Build Capacitor App
         run: |
-          cd teaching-app
+          cd private-teacher-finder-app
           npx cap add android
           npx cap sync
           npx cap copy
 
       - name: Inject AdMob App ID and Permissions
         run: |
-          cd teaching-app
+          cd private-teacher-finder-app
           node -e "
           const fs = require('fs');
           const file = 'android/app/src/main/AndroidManifest.xml';
@@ -256,25 +256,25 @@ jobs:
 
       - name: Generate Testing Keystore
         run: |
-          cd teaching-app/android
-          keytool -genkey -v -keystore release.keystore -alias releasealias -keyalg RSA -keysize 2048 -validity 10000 -storepass password123 -keypass password123 -dname "CN=TeachIng, OU=Dev, O=TeachIng, L=TelAviv, S=Israel, C=IL"
+          cd private-teacher-finder-app/android
+          keytool -genkey -v -keystore release.keystore -alias releasealias -keyalg RSA -keysize 2048 -validity 10000 -storepass password123 -keypass password123 -dname "CN=Private Teacher Finder, OU=Dev, O=Private Teacher Finder, L=TelAviv, S=Israel, C=IL"
 
       - name: Install ImageMagick
         run: sudo apt-get install -y imagemagick
 
       - name: Create Logo
         run: |
-          convert -size 512x512 gradient:#7c3aed-#4c1d95 -gravity center -pointsize 100 -fill white -annotate 0 "TeachIng" logo.png
-          mkdir -p teaching-app/android/app/src/main/res/mipmap-mdpi teaching-app/android/app/src/main/res/mipmap-hdpi teaching-app/android/app/src/main/res/mipmap-xhdpi teaching-app/android/app/src/main/res/mipmap-xxhdpi teaching-app/android/app/src/main/res/mipmap-xxxhdpi
-          convert logo.png -resize 48x48 teaching-app/android/app/src/main/res/mipmap-mdpi/ic_launcher.png
-          convert logo.png -resize 72x72 teaching-app/android/app/src/main/res/mipmap-hdpi/ic_launcher.png
-          convert logo.png -resize 96x96 teaching-app/android/app/src/main/res/mipmap-xhdpi/ic_launcher.png
-          convert logo.png -resize 144x144 teaching-app/android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png
-          convert logo.png -resize 192x192 teaching-app/android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
+          convert -size 512x512 gradient:#7c3aed-#4c1d95 -gravity center -pointsize 100 -fill white -annotate 0 "Private Teacher Finder" logo.png
+          mkdir -p private-teacher-finder-app/android/app/src/main/res/mipmap-mdpi private-teacher-finder-app/android/app/src/main/res/mipmap-hdpi private-teacher-finder-app/android/app/src/main/res/mipmap-xhdpi private-teacher-finder-app/android/app/src/main/res/mipmap-xxhdpi private-teacher-finder-app/android/app/src/main/res/mipmap-xxxhdpi
+          convert logo.png -resize 48x48 private-teacher-finder-app/android/app/src/main/res/mipmap-mdpi/ic_launcher.png
+          convert logo.png -resize 72x72 private-teacher-finder-app/android/app/src/main/res/mipmap-hdpi/ic_launcher.png
+          convert logo.png -resize 96x96 private-teacher-finder-app/android/app/src/main/res/mipmap-xhdpi/ic_launcher.png
+          convert logo.png -resize 144x144 private-teacher-finder-app/android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png
+          convert logo.png -resize 192x192 private-teacher-finder-app/android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
 
       - name: Build Android AAB
         run: |
-          cd teaching-app/android
+          cd private-teacher-finder-app/android
           ./gradlew bundleRelease
           jarsigner -verbose -sigalg SHA256withRSA -digestalg SHA-256 -keystore release.keystore -storepass password123 -keypass password123 app/build/outputs/bundle/release/app-release.aab releasealias
 
@@ -282,4 +282,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: app-release
-          path: teaching-app/android/app/build/outputs/bundle/release/app-release.aab
+          path: private-teacher-finder-app/android/app/build/outputs/bundle/release/app-release.aab
