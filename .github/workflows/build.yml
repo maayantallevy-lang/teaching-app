@@ -25,14 +25,14 @@ jobs:
 
       - name: Initialize Project
         run: |
-          mkdir -p teachin-app
-          cd teachin-app
+          mkdir -p teaching-app
+          cd teaching-app
           npm init -y
           npm install @capacitor/core @capacitor/cli @capacitor/android @capacitor-community/admob firebase
 
       - name: Generate Capacitor Config
         run: |
-          cd teachin-app
+          cd teaching-app
           cat << 'EOF_CAP' > capacitor.config.json
           {
             "appId": "com.teachin.app",
@@ -44,7 +44,7 @@ jobs:
 
       - name: Generate Web App (index.html)
         run: |
-          cd teachin-app
+          cd teaching-app
           mkdir -p www
           cat << 'EOF_HTML' > www/index.html
           <!DOCTYPE html>
@@ -237,14 +237,14 @@ jobs:
 
       - name: Build Capacitor App
         run: |
-          cd teachin-app
+          cd teaching-app
           npx cap add android
           npx cap sync
           npx cap copy
 
       - name: Inject AdMob App ID and Permissions
         run: |
-          cd teachin-app
+          cd teaching-app
           node -e "
           const fs = require('fs');
           const file = 'android/app/src/main/AndroidManifest.xml';
@@ -256,7 +256,7 @@ jobs:
 
       - name: Generate Testing Keystore
         run: |
-          cd teachin-app/android
+          cd teaching-app/android
           keytool -genkey -v -keystore release.keystore -alias releasealias -keyalg RSA -keysize 2048 -validity 10000 -storepass password123 -keypass password123 -dname "CN=TeachIng, OU=Dev, O=TeachIng, L=TelAviv, S=Israel, C=IL"
 
       - name: Install ImageMagick
@@ -265,16 +265,16 @@ jobs:
       - name: Create Logo
         run: |
           convert -size 512x512 gradient:#7c3aed-#4c1d95 -gravity center -pointsize 100 -fill white -annotate 0 "TeachIng" logo.png
-          mkdir -p teachin-app/android/app/src/main/res/mipmap-mdpi teachin-app/android/app/src/main/res/mipmap-hdpi teachin-app/android/app/src/main/res/mipmap-xhdpi teachin-app/android/app/src/main/res/mipmap-xxhdpi teachin-app/android/app/src/main/res/mipmap-xxxhdpi
-          convert logo.png -resize 48x48 teachin-app/android/app/src/main/res/mipmap-mdpi/ic_launcher.png
-          convert logo.png -resize 72x72 teachin-app/android/app/src/main/res/mipmap-hdpi/ic_launcher.png
-          convert logo.png -resize 96x96 teachin-app/android/app/src/main/res/mipmap-xhdpi/ic_launcher.png
-          convert logo.png -resize 144x144 teachin-app/android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png
-          convert logo.png -resize 192x192 teachin-app/android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
+          mkdir -p teaching-app/android/app/src/main/res/mipmap-mdpi teaching-app/android/app/src/main/res/mipmap-hdpi teaching-app/android/app/src/main/res/mipmap-xhdpi teaching-app/android/app/src/main/res/mipmap-xxhdpi teaching-app/android/app/src/main/res/mipmap-xxxhdpi
+          convert logo.png -resize 48x48 teaching-app/android/app/src/main/res/mipmap-mdpi/ic_launcher.png
+          convert logo.png -resize 72x72 teaching-app/android/app/src/main/res/mipmap-hdpi/ic_launcher.png
+          convert logo.png -resize 96x96 teaching-app/android/app/src/main/res/mipmap-xhdpi/ic_launcher.png
+          convert logo.png -resize 144x144 teaching-app/android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png
+          convert logo.png -resize 192x192 teaching-app/android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
 
       - name: Build Android AAB
         run: |
-          cd teachin-app/android
+          cd teaching-app/android
           ./gradlew bundleRelease
           jarsigner -verbose -sigalg SHA256withRSA -digestalg SHA-256 -keystore release.keystore -storepass password123 -keypass password123 app/build/outputs/bundle/release/app-release.aab releasealias
 
@@ -282,4 +282,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: app-release
-          path: teachin-app/android/app/build/outputs/bundle/release/app-release.aab
+          path: teaching-app/android/app/build/outputs/bundle/release/app-release.aab
